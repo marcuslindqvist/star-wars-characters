@@ -1,114 +1,113 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br />
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener"
-        >vue-cli documentation</a
-      >.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li>
-        <a
-          href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel"
-          target="_blank"
-          rel="noopener"
-          >babel</a
-        >
-      </li>
-      <li>
-        <a
-          href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint"
-          target="_blank"
-          rel="noopener"
-          >eslint</a
-        >
+  <div class="character-list">
+    <label for="search">Search a character: </label>
+    <input type="search" name="search" id="" @input="getSearchResult" />
+    <ul v-if="results">
+      <li
+        v-for="(item, index) in results"
+        :key="index"
+        @click="getDetails(item.url)"
+      >
+        {{ item.name }}
       </li>
     </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li>
-        <a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a>
-      </li>
-      <li>
-        <a href="https://forum.vuejs.org" target="_blank" rel="noopener"
-          >Forum</a
-        >
-      </li>
-      <li>
-        <a href="https://chat.vuejs.org" target="_blank" rel="noopener"
-          >Community Chat</a
-        >
-      </li>
-      <li>
-        <a href="https://twitter.com/vuejs" target="_blank" rel="noopener"
-          >Twitter</a
-        >
-      </li>
-      <li>
-        <a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a>
-      </li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li>
-        <a href="https://router.vuejs.org" target="_blank" rel="noopener"
-          >vue-router</a
-        >
-      </li>
-      <li>
-        <a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a>
-      </li>
-      <li>
-        <a
-          href="https://github.com/vuejs/vue-devtools#vue-devtools"
-          target="_blank"
-          rel="noopener"
-          >vue-devtools</a
-        >
-      </li>
-      <li>
-        <a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener"
-          >vue-loader</a
-        >
-      </li>
-      <li>
-        <a
-          href="https://github.com/vuejs/awesome-vue"
-          target="_blank"
-          rel="noopener"
-          >awesome-vue</a
-        >
-      </li>
-    </ul>
+    <section id="pagination">
+      <button id="previous" v-show="previous" @click="refreshList">
+        previous
+      </button>
+      <span>{{ currentPage }} out of {{ totalPages }}</span>
+      <button id="next" v-show="next" @click="refreshList">next</button>
+    </section>
+
+    <CharacterDetails
+      v-if="detailsStatus"
+      :personObject="personObject"
+      @clicked="closeDetails"
+    />
   </div>
 </template>
 
 <script>
+import { getCharacters, getSingleCharacter, getSearch } from "@/api/api.js";
+import CharacterDetails from "@/components/CharacterDetails.vue";
 export default {
-  name: "HelloWorld",
-  props: {
-    msg: String,
+  components: {
+    CharacterDetails,
+  },
+  data() {
+    return {
+      results: [],
+      next: "",
+      previous: "",
+      personObject: {},
+      detailsStatus: false,
+      currentPage: 1,
+      totalPages: 0,
+    };
+  },
+  created: async function () {
+    const data = await getCharacters();
+    this.results = data.results;
+    this.next = data.next;
+    this.previous = data.previous;
+    this.totalPages = Math.ceil(data.count / 10);
+  },
+  methods: {
+    closeDetails() {
+      this.detailsStatus = false;
+    },
+    async refreshList(e) {
+      try {
+        if (e.target.id == "previous") {
+          const data = await getCharacters(this.previous);
+          this.results = data.results;
+          this.next = data.next;
+          this.previous = data.previous;
+          this.currentPage--;
+        } else {
+          const data = await getCharacters(this.next);
+          this.results = data.results;
+          this.next = data.next;
+          this.previous = data.previous;
+          this.currentPage++;
+        }
+      } catch (error) {
+        console.log(error.message);
+      }
+    },
+    async getDetails(id) {
+      const data = await getSingleCharacter(id);
+      this.personObject = data;
+      this.detailsStatus = true;
+    },
+    async getSearchResult(e) {
+      const input = e.target.value;
+      if (input) {
+        const data = await getSearch(e.target.value);
+        this.results = data.results;
+      }
+    },
   },
 };
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped lang="scss">
-h3 {
-  margin: 40px 0 0;
+<style scoped lang="css">
+.character-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 ul {
-  list-style-type: none;
-  padding: 0;
+  list-style: none;
 }
 li {
-  display: inline-block;
-  margin: 0 10px;
+  margin-bottom: 1rem;
 }
-a {
-  color: #42b983;
+
+#pagination {
+  width: 200px;
+  display: flex;
+  justify-content: center space-between;
 }
 </style>
